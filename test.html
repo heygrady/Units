@@ -1,0 +1,81 @@
+<!doctype html>
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+	<title></title>
+	<meta name="description" content="">
+	<meta name="author" content="">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<style>
+	body, html {
+		margin: 0;
+		padding: 0;
+		font-size: 30px;
+	}
+	.wrapper {
+		font-size: 15px;
+		border: 5px solid black;
+		width: 500px;
+	}
+	.box {
+		background-color: yellow;
+		width: 160px;
+		height: 30px;
+		border: 2px solid red;
+		padding: 8px;
+		margin-bottom: 10px;
+
+	}
+	</style>
+</head>
+
+<body>
+	<div class="wrapper">
+	</div>
+
+	<!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if offline -->
+	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+
+	<!-- Unit.js -->
+	<script src="Length.js"></script>
+
+	<!-- test -->
+	<script>
+	var units = ['10%', '10px', '10mm', '1cm', '1in', '10pt', '1pc', '10mozmm', '1rem', '2vh', '2vw', '2vm', '1em', '3ex', '3ch'], tmp, value, unit;
+	var i = units.length, len;
+	var tmpl = '<div class="box" style="margin-left: {{css}}">{{label}}: {{value}}</div>',
+		vars = ['{{css}}', '{{label}}', '{{value}}'],
+		$el, $wrapper = $('.wrapper');
+
+	while (i--) {
+		tmp = Length.parseValue(units[i]);
+		value = tmp.value;
+		unit = tmp.unit;
+		
+		$el = $(template(tmpl, vars, [units[i], 'Margin Left', units[i]])).appendTo($wrapper);
+		if (unit !== '%') {
+			len = Length.toPx(tmp, $el[0]);
+		} else {
+			len = Length.percentageToPx(tmp, parseInt($wrapper.width()));
+		}
+		$(template(tmpl, vars, [len + 'px', 'Converted', units[i]])).appendTo($wrapper);
+
+		//console.log(len, unit);
+	}
+
+	// super simple tempate
+	function template(subject, substr, newSubStr) {
+		var i = substr.length, str = subject;
+		while (i--) {
+			str = str.replace(substr[i], newSubStr[i]);
+		}
+		return str;
+	}
+	</script>
+</body>
+</html>
