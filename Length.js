@@ -12,7 +12,6 @@
         testStyle = testElem.style,
         testProp = 'width',
         runits = /^([\+\-]=)?(-?[\d+.\-]+)([a-z]+|%)(.*?)$/i, // support jQuery animate prefixes and lists
-        rnumpx = /^-?\d+(?:px)?$/i,
         round = Math.round,
         multiplier = 1000; // IE9 gets weird with a multiplier over 1000
     
@@ -93,7 +92,7 @@
         var matches = string.match(runits);
         // TODO: matches[4] holds other values that are potentially in a list
         return {
-            prefix: matches[1],
+            //prefix: matches[1],
             value: matches[2],
             unit: matches[3]
         };
@@ -102,7 +101,7 @@
     // TODO: handle list values like margin and padding
     Length.toPx = function (value, element) {
         // overloading
-        if (typeof value === "string") {
+        if (!value.unit) {
             value = Length.parseValue(value);
         }
 
@@ -144,7 +143,7 @@
     // TODO: it would be possible to calculate for most common properties, like height, width, top, bottom, margin, padding, etc
     Length.percentageToPx = function (value, relativeValue) {
         // overloading
-        if (typeof value === "string") {
+        if (!value.unit) {
             value = Length.parseValue(value);
         }
         
