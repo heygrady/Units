@@ -6,13 +6,18 @@
     if (!body) { return; }
 
     var Length = window.Length = {},
-        absoluteUnits = ['px', 'mm', 'cm', 'in', 'pt', 'pc', 'mozmm', 'rem', 'vh', 'vw', 'vm'],
+
+        absoluteUnits = ['mm', 'cm', 'pt', 'pc', 'in', 'mozmm', 'rem', 'vh', 'vw', 'vm'],
+        absoluteValues = [1/25.4, 1/2.54, 1/72, 12/72],
         i = absoluteUnits.length,
+        len = i,
         testElem = document.createElement('testunit'),
         testStyle = testElem.style,
         testProp = 'width',
-        runits = /^([\+\-]=)?(-?[\d+.\-]+)([a-z]+|%)(.*?)$/i, // support jQuery animate prefixes and lists
+        runits = /^([\+\-]=)?(-?[\d+\.\-]+)([a-z]+|%)(.*?)$/i,
         round = Math.round,
+        toPx = 'ToPx',
+        addEvent = window.addEventListener,
         multiplier = 1000; // IE9 gets weird with a multiplier over 1000
     
     // add the test element to the page
@@ -24,27 +29,9 @@
     // make sure it's invisible
     testStyle.position = 'absolute';
     testStyle.height = 0;
-    testStyle.overflow = 'hidden';
-    testStyle.clip = 'rect(0 0 0 0)';
+    //testStyle.overflow = 'hidden';
+    //testStyle.clip = 'rect(0 0 0 0)';
     
-    // find the conversion of a unit to px
-    function pixelsPerUnit (unit) {
-        var value;
-
-        // try to get a value from the test element
-        // IE8 and below throw exceptions when setting unsupported units
-        try {
-            // most browsers return whole numbers, we need a few decimals to ensure useful conversions
-            // the multiplier ensures at least three decimals of precision
-            testStyle[testProp] = multiplier + unit;
-            value = cssValue(testElem, testProp, 1);
-        } catch(e) {
-            value = 0;
-        }
-        testStyle[testProp] = 0; // reset it
-        return parseFloat(value)/multiplier;
-    }
-
     // find the css value of a property on an element
     function cssValue (elem, prop, useOffset) {
         var value,
@@ -67,24 +54,43 @@
         return value;
     }
 
+    // find the conversion of a unit to px
+    function pixelsPerUnit (unit) {
+        var value;
+
+        // try to get a value from the test element
+        // IE8 and below throw exceptions when setting unsupported units
+        try {
+            // most browsers return whole numbers, we need a few decimals to ensure useful conversions
+            // the multiplier ensures at least three decimals of precision
+            testStyle[testProp] = multiplier + unit;
+            value = cssValue(testElem, testProp, 1);
+        } catch(e) {
+            value = 0;
+        }
+        testStyle[testProp] = 0; // reset it
+        return parseFloat(value)/multiplier;
+    }
+
     // find and save the conversion of an absolute ratio to pixels
+    // we're pretending that rem
     function testAbsoluteUnit(i) {
-        Length[absoluteUnits[i]] = pixelsPerUnit(absoluteUnits[i]);
+        // All real absolute units are relative to inches
+        // 1 inch is usually 96px but it isn't always
+        Length[absoluteUnits[i] + toPx] = i < 4 ? absoluteValues[i] * Length['in' + toPx] : pixelsPerUnit(absoluteUnits[i]);
     }
 
     // loop through the absolute units and measure them
     // TODO: rem is being treated as a static conversion even though it will change if the body font-size ever changes
-    // NOTE: absolute units need to be looked up because of wild browser inconsistencies
+    // NOTE: absolute units need to be looked up because of screen DPI
     while (i--) { testAbsoluteUnit(i); }
 
     // The vm, vh, vw units need to be recalculated on window.resize (in browsers that support them)
     // vm, vh, vw will be 0 in unsupported browsers
-    var addEvent = window.addEventListener;
-    if (addEvent && Length.vw) {
+    if (addEvent && Length.vh) {
         addEvent('resize', function() {
-            var i = absoluteUnits.length,
-                len = i - 3; // vm, vh, vw are the last 3 in the array so the first 3 to test
-            while (i-- > len) { testAbsoluteUnit(i); }
+            i = len;
+            while (i-- > len - 3) { testAbsoluteUnit(i); }
         });
     }
 
@@ -105,38 +111,32 @@
             value = Length.parseValue(value);
         }
 
-        var testValue,
-            val = value.value,
+        var val = value.value,
             unit = value.unit,
-            unitToPx = unit + 'ToPx', style;
+            ratio = Length[unit + toPx];
 
-        if (Length[unit]) {
-            // an absolute unit, we've got those ready
-            return round(val*Length[unit]);
-        } else if (typeof element === 'object') {
+        if (unit === 'px') {
+            ratio = 1;
+        } else if (!ratio && element) {
             // font-relative units require the containing element
             var fontSize = cssValue(element, "fontSize");
 
-            // em is easy-ish
             if (unit === 'em') {
-                return round(val*parseFloat(fontSize));
+                // em is easy-ish
+                ratio = parseFloat(fontSize);
+            } else {
+                // ex and ch require measuring actual letters in the font
+                // copy the font-size and font-style
+                testStyle.fontSize = fontSize;
+                testStyle.fontFamily = cssValue(element, 'fontFamily', 1);
+
+                // return the conversion
+                ratio = pixelsPerUnit(unit);
             }
-
-            // ex and ch require measuring actual letters in the font
-            // copy the font-size and font-style
-            testStyle.fontSize = fontSize;
-            testStyle.fontFamily = cssValue(element, 'fontFamily', 1);
-
-            // find the pixels per unit
-            testValue = pixelsPerUnit(unit);
-
-            // return the conversion
-            return round(val*testValue);
         }
 
-        // conversion failed, likely a percentage was supplied
-        // TODO: we could actually handle several common percentages if we knew the target prop
-        return false;
+        // when ratio fails, likely an unsupported unit or percentage was supplied
+        return ratio ? round(val*ratio) : 0;
     };
 
     // NOTE: percentages are calculated differently per property

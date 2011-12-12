@@ -15,10 +15,10 @@
 	body, html {
 		margin: 0;
 		padding: 0;
-		font-size: 30px;
+		/*font-size: 30px;*/
 	}
 	.wrapper {
-		font-size: 15px;
+		/*font-size: 15px;*/
 		border: 5px solid black;
 		width: 500px;
 	}
@@ -67,7 +67,7 @@
 
 	<!-- test -->
 	<script>
-	var units = ['10%', '10px', '10mm', '1cm', '1in', '10pt', '1pc', '10mozmm', '1rem', '2vh', '2vw', '2vm', '1em', '3ex', '3ch'], tmp, value, unit;
+	var units = ['10%', '10px', '10mm', '1cm', '1in', '10pt', '1pc', '10mozmm', '1rem', '2vh', '2vw', '2vm', '1em', '1ex', '1ch'], tmp, value, unit;
 	var i = units.length, len;
 	var tmpl = '<div class="box" style="margin-left: {{css}}">{{label}}: {{value}}</div>',
 		vars = ['{{css}}', '{{label}}', '{{value}}'],
@@ -86,7 +86,7 @@
 		}
 		$(template(tmpl, vars, [len + 'px', 'Converted', units[i]])).appendTo($wrapper);
 
-		//console.log(len, unit);
+		console.log(units[i], '=>', len + 'px');
 	}
 
 	// super simple tempate
