@@ -9,6 +9,7 @@
 
         absoluteUnits = ['mm', 'cm', 'pt', 'pc', 'in', 'mozmm', 'rem', 'vh', 'vw', 'vm'],
         absoluteValues = [1/25.4, 1/2.54, 1/72, 12/72],
+        conversions = {},
         i = absoluteUnits.length,
         len = i,
         testElem = document.createElement('testunit'),
@@ -16,15 +17,19 @@
         testProp = 'width',
         runits = /^([\+\-]=)?(-?[\d+\.\-]+)([a-z]+|%)(.*?)$/i,
         round = Math.round,
-        toPx = 'ToPx',
+        _toPx = 'ToPx',
+        _fontSize = 'fontSize',
+        _fontFamily = 'fontFamily',
         addEvent = window.addEventListener,
-        multiplier = 1000; // IE9 gets weird with a multiplier over 1000
+        multiplier = 1000,
+        parseValue,
+        floatNum = parseFloat; // IE9 gets weird with a multiplier over 1000
     
     // add the test element to the page
     body.appendChild(testElem);
 
     // make sure it's display block
-    testStyle.display = 'block';
+    //testStyle.display = 'block';
 
     // make sure it's invisible
     testStyle.position = 'absolute';
@@ -69,7 +74,7 @@
             value = 0;
         }
         testStyle[testProp] = 0; // reset it
-        return parseFloat(value)/multiplier;
+        return floatNum(value)/multiplier;
     }
 
     // find and save the conversion of an absolute ratio to pixels
@@ -77,7 +82,7 @@
     function testAbsoluteUnit(i) {
         // All real absolute units are relative to inches
         // 1 inch is usually 96px but it isn't always
-        Length[absoluteUnits[i] + toPx] = i < 4 ? absoluteValues[i] * Length['in' + toPx] : pixelsPerUnit(absoluteUnits[i]);
+       conversions[absoluteUnits[i] + _toPx] = i < 4 ? absoluteValues[i] * conversions['in' + _toPx] : pixelsPerUnit(absoluteUnits[i]);
     }
 
     // loop through the absolute units and measure them
@@ -94,11 +99,25 @@
         });
     }
 
-    Length.parseValue = function (string) {
+    parseValue = Length.parseValue = function (string) {
+        // handle side-based percentage keywords (used in background-position and transition-origin)
+        switch(string) {
+            case 'left': // no break
+            case 'top':
+                string = '0%';
+                break;
+            case 'right': // no break
+            case 'bottom':
+                string = '100%';
+                break;
+            case 'center':
+                string = '50%';
+        }
+
         var matches = string.match(runits);
         // TODO: matches[4] holds other values that are potentially in a list
         return {
-            //prefix: matches[1],
+            prefix: matches[1],
             value: matches[2],
             unit: matches[3]
         };
@@ -107,28 +126,30 @@
     // TODO: handle list values like margin and padding
     Length.toPx = function (value, element) {
         // overloading
+        // TODO: won't work with unitless numbers
         if (!value.unit) {
-            value = Length.parseValue(value);
+            value = parseValue(value);
         }
 
         var val = value.value,
             unit = value.unit,
-            ratio = Length[unit + toPx];
+            ratio = conversions[unit + _toPx],
+            fontSize;
 
         if (unit === 'px') {
             ratio = 1;
         } else if (!ratio && element) {
             // font-relative units require the containing element
-            var fontSize = cssValue(element, "fontSize");
+            fontSize = cssValue(element, _fontSize);
 
             if (unit === 'em') {
                 // em is easy-ish
-                ratio = parseFloat(fontSize);
+                ratio = floatNum(fontSize);
             } else {
                 // ex and ch require measuring actual letters in the font
                 // copy the font-size and font-style
-                testStyle.fontSize = fontSize;
-                testStyle.fontFamily = cssValue(element, 'fontFamily', 1);
+                testStyle[_fontSize] = fontSize;
+                testStyle[_fontFamily] = cssValue(element, _fontFamily, 1);
 
                 // return the conversion
                 ratio = pixelsPerUnit(unit);
@@ -143,18 +164,14 @@
     // TODO: it would be possible to calculate for most common properties, like height, width, top, bottom, margin, padding, etc
     Length.percentageToPx = function (value, relativeValue) {
         // overloading
+        // TODO: won't work with unitless numbers
         if (!value.unit) {
-            value = Length.parseValue(value);
+            value = parseValue(value);
         }
         
         // percentages are easy with a relative value
-        // TODO: it would be possibble to convert all units given the target element and the css property
-        if (value.unit === '%') {
-            return parseFloat(relativeValue)*value.value/100;
-        }
-
-        // conversion failed, likely a non-percentage unit was supplied
-        return false;
+        // or conversion failed, likely a non-percentage unit was supplied
+        return value.unit === '%' ? floatNum(relativeValue) * value.value / 100 : false;
     };
 })(this, this.document, this.document.body);
 

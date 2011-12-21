@@ -4,15 +4,16 @@
 		unitValue = [180, Math.PI, 2, 0.5],
 		conversions = {},
 		runits = /^([\+\-]=)?(-?[\d+.\-]+)([a-z]+|%)(.*?)$/i,
-		i = units.length,
+		parseValue,
+		i = 4,
 		j,
 		unit;
 
-	Angle.parseValue = function (string) {
+	parseValue = Angle.parseValue = function (string) {
 		var matches = string.match(runits);
 		// TODO: matches[4] holds other values that are potentially in a list
 		return {
-			//prefix: matches[1],
+			prefix: matches[1],
 			value: matches[2],
 			unit: matches[3]
 		};
@@ -34,7 +35,7 @@
 			Angle['to' + toUnit] = function (value) {
 				// overloading
 				if (!value.unit) {
-					value = Length.parseValue(value);
+					value = parseValue(value);
 				}
 
 				var val = value.value * 1, // convert to a number
