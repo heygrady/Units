@@ -70,7 +70,7 @@ function toPx(elem, value, prop, force) {
 
         // add the test element to the DOM
         if (styleElem === testElem) { docElement.appendChild(styleElem); }
-        console.log(styleElem);
+
         // read the computed/used value
         // if we couldn't convert it, return 0
         ret = !style[prop] ? 0 : _parseFloat(curCSS(styleElem, prop));
