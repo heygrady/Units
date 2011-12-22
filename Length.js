@@ -1,160 +1,135 @@
-(function(window, document, body) {
-    'use strict';
+(function(document, undefined){
+"use strict";
+
+// create an element to test with
+var testElem = document.createElement('test'),
+    convert = {},
+    units = ['mm', 'cm', 'pt', 'pc', 'in', 'mozmm'],
+    conversions = [1/25.4, 1/2.54, 1/72, 1/6],
+    i = 6, //units.length,
+    runit = /^(-?[\d+\.\-]+)([a-z]+|%)$/i,
+    rem = /r?em/,
+    docElement = document.documentElement,
+    defaultView = document.defaultView,
+    getComputedStyle = defaultView && defaultView.getComputedStyle,
+    defaultProp = 'left',
+    _font = 'font',
+    _fontSize   = _font + 'Size',
+    _fontFamily = _font + 'Family',
+    _fontWeight = _font + 'Weight',
+    _fontStyle  = _font + 'Style',
+    _px = 'px',
+    _toPx = 'ToPx',
+    _parseFloat = parseFloat;
+
+// make sure our element is position absolute
+testElem.style.position = 'absolute';
+
+// loop our absolute units
+while(i--) {
+    convert[units[i] + _toPx] = conversions[i] ? conversions[i] * convert.inToPx : toPx(testElem, '1' + units[i]);
+}
+
+// convert a value to pixels
+function toPx(elem, value, prop, force) {
+    prop = prop || defaultProp;
+    var style,
+        styleVal,
+        styleElem,
+        ret = _parseFloat(value),
+        unit = getUnit(value),
+        conversion = unit === _px ? 1 : convert[unit + _toPx];
     
-    // a body element is required for this to work
-    // TODO: there's probably a way to not need a body, or create one
-    if (!body) { return; }
+    // return known conversions immediately
+    if (conversion || rem.test(unit) && !force) {
+        conversion = conversion || _parseFloat(curCSS(unit === 'rem' ? docElement : prop === _fontSize ? elem.parentNode : elem, _fontSize));
+        ret = ret * conversion;
+    } else {
+        // percentages are relative by prop on the actual element
+        styleElem = unit === '%' ? elem : testElem;
+        style = styleElem.style;
 
-    var Length = window.Length = {},
-
-        absoluteUnits = ['mm', 'cm', 'pt', 'pc', 'in', 'mozmm', 'rem', 'vh', 'vw', 'vm'],
-        absoluteValues = [1/25.4, 1/2.54, 1/72, 12/72],
-        i = absoluteUnits.length,
-        len = i,
-        testElem = document.createElement('testunit'),
-        testStyle = testElem.style,
-        testProp = 'width',
-        runits = /^([\+\-]=)?(-?[\d+\.\-]+)([a-z]+|%)(.*?)$/i,
-        round = Math.round,
-        toPx = 'ToPx',
-        addEvent = window.addEventListener,
-        multiplier = 1000; // IE9 gets weird with a multiplier over 1000
-    
-    // add the test element to the page
-    body.appendChild(testElem);
-
-    // make sure it's display block
-    testStyle.display = 'block';
-
-    // make sure it's invisible
-    testStyle.position = 'absolute';
-    testStyle.height = 0;
-    //testStyle.overflow = 'hidden';
-    //testStyle.clip = 'rect(0 0 0 0)';
-    
-    // find the css value of a property on an element
-    function cssValue (elem, prop, useOffset) {
-        var value,
-            computedStyle = window.getComputedStyle;
-        if (computedStyle) {
-            value = computedStyle(elem)[prop];
-        } else {
-            // IE won't convert absolute units
-            if (prop === testProp && useOffset) {
-                // if we're testing, then just ask for the offsetWidth
-                value = elem.offsetWidth + 'px';
-            } else {
-                // grab the raw value
-                value = elem.currentStyle[prop];
-
-                // use the raw value or correct for absolute units
-                value = useOffset ? value : Length.toPx(value) + 'px';
-            }
+        // copy the font to the test element
+        if (unit === 'ch' || unit === 'ex') {
+            style[_fontSize]   = curCSS(elem, _fontSize);
+            style[_fontFamily] = curCSS(elem, _fontFamily);
+            style[_fontWeight] = curCSS(elem, _fontWeight);
+            style[_fontStyle]  = curCSS(elem, _fontStyle);
         }
-        return value;
+
+        // capture the current value
+        styleVal = style[prop];
+
+        // set the style on the target element
+        try {
+            style[prop] = value;
+        } catch(e) {
+            // IE 8 and below won't accept nonsense units
+            return 0;
+        }
+
+        // add the test element to the DOM
+        if (styleElem === testElem) { docElement.appendChild(styleElem); }
+        console.log(styleElem);
+        // read the computed/used value
+        // if we couldn't convert it, return 0
+        ret = !style[prop] ? 0 : _parseFloat(curCSS(styleElem, prop));
+
+        // yank the test element out of the dom
+        // (because people will complain if they see in in their inspector, otherwise it doens't hurt anything)
+        if (elem !== testElem && styleElem === testElem) { docElement.removeChild(styleElem); }
+
+        // restore the property we were testing
+        style[prop] = styleVal !== undefined ? styleVal : null;
     }
 
-    // find the conversion of a unit to px
-    function pixelsPerUnit (unit) {
-        var value;
+    return ret;
+}
 
-        // try to get a value from the test element
-        // IE8 and below throw exceptions when setting unsupported units
-        try {
-            // most browsers return whole numbers, we need a few decimals to ensure useful conversions
-            // the multiplier ensures at least three decimals of precision
-            testStyle[testProp] = multiplier + unit;
-            value = cssValue(testElem, testProp, 1);
-        } catch(e) {
+// return the computed value of a CSS property
+function curCSS(elem, prop, raw) {
+    var value,
+        pixel,
+        unit;
+    if (getComputedStyle) {
+        // FireFox, Chrome/Safari, Opera and IE9+
+        value = getComputedStyle(elem)[prop];
+
+        // chrome returns percentages in many cases, this fixes common cases like margin, padding, left and right
+        // TODO: top and bottom would still be wrong
+        // TODO: firefox passes values straight through when they can't be applied, like applying top to a postionion static element
+        // @see http://bugs.jquery.com/ticket/10639
+        if (getUnit(value) === '%') {
+            value = toPx(elem, value, 'width', 1);
+        } else if (value === 'auto') {
             value = 0;
         }
-        testStyle[testProp] = 0; // reset it
-        return parseFloat(value)/multiplier;
+    } else if (prop === _fontSize) {
+        // correct IE issues with font-size
+        // @see http://bugs.jquery.com/ticket/760
+        value = toPx(elem, '1em', defaultProp, 1);
+    } else {
+        // IE won't convert units for us
+        // Ask for a property that always returns pixels, or grab the raw value
+        pixel = elem.style['pixel' + prop.charAt(0).toUpperCase() + prop.substr(1)];
+        value = pixel ? pixel + _px : elem.currentStyle[prop];
+        unit = getUnit(value);
+
+        // if IE returned us a non-px unit, convert it using the default property
+        // TODO: this will return incorrect results for percentages in many cases
+        if (!raw && unit && unit !== _px) {
+            value = toPx(elem, value) + _px;
+        }
     }
+    return value;
+}
 
-    // find and save the conversion of an absolute ratio to pixels
-    // we're pretending that rem
-    function testAbsoluteUnit(i) {
-        // All real absolute units are relative to inches
-        // 1 inch is usually 96px but it isn't always
-        Length[absoluteUnits[i] + toPx] = i < 4 ? absoluteValues[i] * Length['in' + toPx] : pixelsPerUnit(absoluteUnits[i]);
-    }
+function getUnit(value) {
+    return (value.match(runit)||[])[2];
+}
 
-    // loop through the absolute units and measure them
-    // TODO: rem is being treated as a static conversion even though it will change if the body font-size ever changes
-    // NOTE: absolute units need to be looked up because of screen DPI
-    while (i--) { testAbsoluteUnit(i); }
-
-    // The vm, vh, vw units need to be recalculated on window.resize (in browsers that support them)
-    // vm, vh, vw will be 0 in unsupported browsers
-    if (addEvent && Length.vh) {
-        addEvent('resize', function() {
-            i = len;
-            while (i-- > len - 3) { testAbsoluteUnit(i); }
-        });
-    }
-
-    Length.parseValue = function (string) {
-        var matches = string.match(runits);
-        // TODO: matches[4] holds other values that are potentially in a list
-        return {
-            //prefix: matches[1],
-            value: matches[2],
-            unit: matches[3]
-        };
-    };
-
-    // TODO: handle list values like margin and padding
-    Length.toPx = function (value, element) {
-        // overloading
-        if (!value.unit) {
-            value = Length.parseValue(value);
-        }
-
-        var val = value.value,
-            unit = value.unit,
-            ratio = Length[unit + toPx];
-
-        if (unit === 'px') {
-            ratio = 1;
-        } else if (!ratio && element) {
-            // font-relative units require the containing element
-            var fontSize = cssValue(element, "fontSize");
-
-            if (unit === 'em') {
-                // em is easy-ish
-                ratio = parseFloat(fontSize);
-            } else {
-                // ex and ch require measuring actual letters in the font
-                // copy the font-size and font-style
-                testStyle.fontSize = fontSize;
-                testStyle.fontFamily = cssValue(element, 'fontFamily', 1);
-
-                // return the conversion
-                ratio = pixelsPerUnit(unit);
-            }
-        }
-
-        // when ratio fails, likely an unsupported unit or percentage was supplied
-        return ratio ? round(val*ratio) : 0;
-    };
-
-    // NOTE: percentages are calculated differently per property
-    // TODO: it would be possible to calculate for most common properties, like height, width, top, bottom, margin, padding, etc
-    Length.percentageToPx = function (value, relativeValue) {
-        // overloading
-        if (!value.unit) {
-            value = Length.parseValue(value);
-        }
-        
-        // percentages are easy with a relative value
-        // TODO: it would be possibble to convert all units given the target element and the css property
-        if (value.unit === '%') {
-            return parseFloat(relativeValue)*value.value/100;
-        }
-
-        // conversion failed, likely a non-percentage unit was supplied
-        return false;
-    };
-})(this, this.document, this.document.body);
-
+// explose the conversion function to the window object
+window.Length = {
+    toPx: toPx
+}
+}(this.document));

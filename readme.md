@@ -36,53 +36,33 @@ Used for converting between various length units. Absolute units -- such as inch
 ```javascript
 // Absolute Units
 // Different based on the Screen DPI
-Length.toPx('10px'); //-> Always: 10px
-Length.toPx('10mm'); //-> Always: 38px
-Length.toPx('1cm'); //-> Always: 38px
-Length.toPx('1in'); //-> Always: 96px
-Length.toPx('12pt'); //-> Always: 16px
-Length.toPx('1pc'); //-> Always: 16px
-Length.toPx('10mozmm'); //-> Usually: 0px; Firefox: 38px
+Length.toPx(element, '96px'); //-> Always: 96px
+Length.toPx(element, '25.4mm'); //-> Always: 96px
+Length.toPx(element, '2.54cm'); //-> Always: 96px
+Length.toPx(element, '1in'); //-> Always: 96px
+Length.toPx(element, '72pt'); //-> Always: 96px
+Length.toPx(element, '6pc'); //-> Always: 96px
+Length.toPx(element, '25.4mozmm'); //-> Usually: 0px; Firefox: 95.673418px
 
 // Viewport-relative Units
 // Different based on the browser windows size
-Length.toPx('2vh'); //-> Usually: 0px; IE9: 5px
-Length.toPx('2vw'); //-> Usually: 0px; IE9: 23px
-Length.toPx('2vm'); //-> Usually: 0px; IE9: 5px
+Length.toPx(element, '2vh'); //-> Usually: 0px; IE9: based on viewport height
+Length.toPx(element, '2vw'); //-> Usually: 0px; IE9: based on viewport width
+Length.toPx(element, '2vm'); //-> Usually: 0px; IE9: based on viewport height/width
 
 // Font-relative Units
 // Different based on the font on the element (Below is default font of 16px serif font)
 // em, ex, ch require an element for reference.
-Length.toPx('1em', element); //-> Usually: 16px
-Length.toPx('1ex', element); //-> Usually: 7px; IE7, Safari: 8px;
-Length.toPx('1ch', element); //-> Usually: 0px; Firefox: 8px; IE9: 7px
-Length.toPx('1rem'); //-> Usually: 16px; IE8, IE7: 0px;
+Length.toPx(element, '6em'); //-> Usually: 96px
+Length.toPx(element, '13.4ex'); //-> Usually: 96px; Opera: 94px; IE7: 107px; Safari: 112px;
+Length.toPx(element, '12ch'); //-> Usually: 0px; Firefox: 96px; IE9: 83.2px
+Length.toPx(element, '6rem'); //-> Usually: 96px; IE8, IE7: 0px;
 ```
 
-Percentage lengths cannot be easily determined because the percentage is relative to a different measurement based on the CSS property it is applied to. It is usually based on the height or width of the parent element (padding, margin, top, bottom, etc.). It would be unreasonable to maintain a mapping of all possible CSS properties the can have percentage lenghts and their mesaurments relative to the element.
+Percentage lengths cannot be easily determined because the percentage is relative to a different measurement based on the CSS property it is applied to. It is usually based on the height or width of the parent element (padding, margin, top, bottom, etc.). Measuring percentages requires the CSS property to be passed as well. WebKit won't reliably convert percentage units. Firefox will pass back an unconverted unit in cases where the property is unsupported but the unit is valid such as a width on an inline element or a top on a statically positioned element.
 
 ```javascript
-// Percentages
-// a silly function for calculating the padding left on an element
-function calculatePaddingLeft(element, value) {
-    // It's usually best to check for percentage units
-    var val = Length.parseValue(value),
-        pixels, width;
-    if (val.unit === '%') {
-        // in this case we're converting percentage padding, which is based on the parent width
-        // we'll cheat and use jQuery to look up the parent width
-        width = $(element).parent().css('width');
-
-        // val is the parsed value object.
-        // the first argument can be either a string or a parsed value
-        pixels = Length.percentageToPx(val, width);
-    } else {
-        // fall back to converting to pixels using normal units
-        pixels = Length.toPx(val, element);
-    }
-}
-
-calculatePaddingLeft(element, '10%');
-calculatePaddingLeft(element, '10em');
+Length.toPx(element, '10%', 'paddingLeft'); //-> reliable in all browsers
+Length.toPx(element, '10%', 'top'); //-> unreliable in Firefox
 ```
     
