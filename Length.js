@@ -3,27 +3,43 @@
 
 // create an element to test with
 var testElem = document.createElement('test'),
+    testStyle = testElem.style,
     convert = {},
     units = ['mm', 'cm', 'pt', 'pc', 'in', 'mozmm'],
     conversions = [1/25.4, 1/2.54, 1/72, 1/6],
     i = 6, //units.length,
     runit = /^(-?[\d+\.\-]+)([a-z]+|%)$/i,
     rem = /r?em/,
+    rvpos = /^top|bottom/,
     docElement = document.documentElement,
     defaultView = document.defaultView,
     getComputedStyle = defaultView && defaultView.getComputedStyle,
     defaultProp = 'left',
+    marginBug,
+
+    // shorten some repeated strings
     _font = 'font',
     _fontSize   = _font + 'Size',
     _fontFamily = _font + 'Family',
     _fontWeight = _font + 'Weight',
     _fontStyle  = _font + 'Style',
+    _padding = 'padding',
+    _border = 'border',
+    _Top = 'Top',
+    _Bottom = 'Bottom',
+    _marginTop = 'margin' + _Top,
     _px = 'px',
     _toPx = 'ToPx',
     _parseFloat = parseFloat;
 
-// make sure our element is position absolute
-testElem.style.position = 'absolute';
+// make sure our test element is position absolute
+testStyle.position = 'absolute';
+
+// test for the WebKit margin bug
+if( getComputedStyle ) {
+    testStyle[_marginTop] = '1%';
+    marginBug = getComputedStyle( testElem )[_marginTop] !== '1%';
+}
 
 // loop our absolute units
 while(i--) {
@@ -37,12 +53,13 @@ function toPx(elem, value, prop, force) {
         styleVal,
         styleElem,
         ret = _parseFloat(value),
-        unit = getUnit(value),
+        unit = (value.match(runit)||[])[2],
         conversion = unit === _px ? 1 : convert[unit + _toPx];
     
     // return known conversions immediately
     if (conversion || rem.test(unit) && !force) {
-        conversion = conversion || _parseFloat(curCSS(unit === 'rem' ? docElement : prop === _fontSize ? elem.parentNode : elem, _fontSize));
+        styleElem = unit === 'rem' ? docElement : prop === _fontSize ? elem.parentNode : elem;
+        conversion = conversion || _parseFloat(curCSS(styleElem, _fontSize));
         ret = ret * conversion;
     } else {
         // percentages are relative by prop on the actual element
@@ -72,7 +89,7 @@ function toPx(elem, value, prop, force) {
         if (styleElem === testElem) { docElement.appendChild(styleElem); }
 
         // read the computed/used value
-        // if we couldn't convert it, return 0
+        // if style is nothing the browser didn't accept whatever we set, return 0
         ret = !style[prop] ? 0 : _parseFloat(curCSS(styleElem, prop));
 
         // yank the test element out of the dom
@@ -87,45 +104,61 @@ function toPx(elem, value, prop, force) {
 }
 
 // return the computed value of a CSS property
-function curCSS(elem, prop, raw) {
+function curCSS(elem, prop) {
     var value,
-        pixel,
-        unit;
-    if (getComputedStyle) {
+        pixel = elem.style['pixel' + prop.charAt(0).toUpperCase() + prop.slice(1)],
+        unit,
+        parent,
+        innerHeight,
+        outer = [
+            _padding + _Top,
+            _padding + _Bottom,
+            _border + _Top,
+            _border + _Bottom
+        ],
+        i=4;
+    if (pixel) {
+        value = pixel + _px;
+    } else if (getComputedStyle) {
         // FireFox, Chrome/Safari, Opera and IE9+
         value = getComputedStyle(elem)[prop];
-
-        // chrome returns percentages in many cases, this fixes common cases like margin, padding, left and right
-        // TODO: top and bottom would still be wrong
-        // TODO: firefox passes values straight through when they can't be applied, like applying top to a postionion static element
-        // @see http://bugs.jquery.com/ticket/10639
-        if (getUnit(value) === '%') {
-            value = toPx(elem, value, 'width', 1);
-        } else if (value === 'auto') {
-            value = 0;
-        }
     } else if (prop === _fontSize) {
         // correct IE issues with font-size
         // @see http://bugs.jquery.com/ticket/760
-        value = toPx(elem, '1em', defaultProp, 1);
+        value = toPx(elem, '1em', defaultProp, 1) + _px;
     } else {
         // IE won't convert units for us
-        // Ask for a property that always returns pixels, or grab the raw value
-        pixel = elem.style['pixel' + prop.charAt(0).toUpperCase() + prop.substr(1)];
-        value = pixel ? pixel + _px : elem.currentStyle[prop];
-        unit = getUnit(value);
-
-        // if IE returned us a non-px unit, convert it using the default property
-        // TODO: this will return incorrect results for percentages in many cases
-        if (!raw && unit && unit !== _px) {
-            value = toPx(elem, value) + _px;
+        value = elem.currentStyle[prop];
+    }
+    
+    // doctor the values if we got something weird
+    unit = (value.match(runit)||[])[2];
+    if (unit === '%' && marginBug) {
+        // WebKit won't convert percentages for top, bottom, left, right and margin
+        if (rvpos.test(prop)) {
+            // Top and bottom requires measuring the innerHeigt of the parent.
+            innerHeight = (parent = elem.parentNode || elem).offsetHeight;
+            while (i--) {
+              innerHeight -= _parseFloat(curCSS(parent, outer[i]));
+            }
+            value = _parseFloat(value) / 100 * innerHeight + _px;
+        } else {
+            // This fixes margin, left and right
+            // @see https://bugs.webkit.org/show_bug.cgi?id=29084
+            // @see http://bugs.jquery.com/ticket/10639
+            value = toPx(elem, value, 'width', 1);
         }
+
+    } else if (value === 'auto' || (unit !== _px && getComputedStyle)) {
+        // WebKit and Opera will return auto in some cases when a valid value can't be set on a specific property
+        // Firefox will pass back an unaltered value when it is valid but can't be set for that element, like top on a static element
+        value = 0;
+    }else if (unit && unit !== _px) {
+        // IE might return a non-px unit, convert it using the default property
+        // TODO: this will return incorrect results for percentages in some cases
+        value = toPx(elem, value) + _px;
     }
     return value;
-}
-
-function getUnit(value) {
-    return (value.match(runit)||[])[2];
 }
 
 // explose the conversion function to the window object
