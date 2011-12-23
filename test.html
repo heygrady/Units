@@ -12,91 +12,67 @@
 	<meta name="author" content="">
 	<meta name="viewport" content="width=device-width,initial-scale=1">
 	<style>
-	body, html {
-		margin: 0;
-		padding: 0;
-		/*font-size: 30px;*/
-	}
-	.wrapper {
-		/*font-size: 15px;*/
-		border: 5px solid black;
-		width: 500px;
-	}
-	.box {
-		background-color: yellow;
-		width: 160px;
-		height: 30px;
-		border: 2px solid red;
-		padding: 8px;
-		margin-bottom: 10px;
-
-	}
+    html, body {
+        font-size: 100%;
+    }
+    .wrapper {
+        __width: 960px;
+        position: relative;
+        *height: 1px;
+    }
+    .box {
+        position: relative;
+        background-color: yellow;
+        width: 160px;
+        height: 30px;
+        border: 2px solid red;
+        padding: 8px;
+        margin-bottom: 10px;
+        zoom: 1;
+    }
 	</style>
 </head>
 
 <body>
-	<div class="wrapper">
+    <div class="wrapper">
+    </div>
+	<div id="test">
 	</div>
+    <strong id="strong">hello</strong>
+    <em id="em">hello</em>
 
 	<!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if offline -->
 	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
 
 	<!-- Unit.js -->
-	<script src="Angle.js"></script>
-	<script src="Length.js"></script>
-
+    <script src="Length.js"></script>
 	<!-- test -->
-	<script>
-		console.log(Angle.toDeg('360deg'));
-		console.log(Angle.toDeg((2 * Math.PI) +'rad'));
-		console.log(Angle.toDeg('4grad'));
-		console.log(Angle.toDeg('1turn'));
-		console.log(Angle.toRad('360deg'));
-		console.log(Angle.toRad((2 * Math.PI) +'rad'));
-		console.log(Angle.toRad('4grad'));
-		console.log(Angle.toRad('1turn'));
-		console.log(Angle.toGrad('360deg'));
-		console.log(Angle.toGrad((2 * Math.PI) +'rad'));
-		console.log(Angle.toGrad('4grad'));
-		console.log(Angle.toGrad('1turn'));
-		console.log(Angle.toTurn('90deg'));
-		console.log(Angle.toTurn((.5 * Math.PI) +'rad'));
-		console.log(Angle.toTurn('1grad'));
-		console.log(Angle.toTurn('0.25turn'));
-	</script>
+    <script>
+    var units = ['10%', '96px', '25.4mm', '2.54cm', '1in', '72pt', '6pc', '25.4mozmm', '6rem', '10vh', '10vw', '10vm', '6em', '13.4ex', '12ch'],
+        tmp,
+        i = units.length,
+        len,
+        tmpl = '<div class="box" style="margin-left: {{css}}">{{label}}: {{value}}</div>',
+        vars = ['{{css}}', '{{label}}', '{{value}}'],
+        $el, $wrapper = $('.wrapper');
 
-	<!-- test -->
-	<script>
-	var units = ['10%', '10px', '10mm', '1cm', '1in', '10pt', '1pc', '10mozmm', '1rem', '2vh', '2vw', '2vm', '1em', '1ex', '1ch'], tmp, value, unit;
-	var i = units.length, len;
-	var tmpl = '<div class="box" style="margin-left: {{css}}">{{label}}: {{value}}</div>',
-		vars = ['{{css}}', '{{label}}', '{{value}}'],
-		$el, $wrapper = $('.wrapper');
+    while (i--) {
+        $el = $(template(tmpl, vars, [units[i], 'Margin Left', units[i]])).appendTo($wrapper);
+        len = Length.toPx($el[0], units[i], 'marginLeft');
+        $(template(tmpl, vars, [len + 'px', 'Converted', units[i]])).appendTo($wrapper);
 
-	while (i--) {
-		tmp = Length.parseValue(units[i]);
-		value = tmp.value;
-		unit = tmp.unit;
-		
-		$el = $(template(tmpl, vars, [units[i], 'Margin Left', units[i]])).appendTo($wrapper);
-		if (unit !== '%') {
-			len = Length.toPx(tmp, $el[0]);
-		} else {
-			len = Length.percentageToPx(tmp, parseInt($wrapper.width()));
-		}
-		$(template(tmpl, vars, [len + 'px', 'Converted', units[i]])).appendTo($wrapper);
+        console.log(units[i], '=>', len + 'px');
+    }
 
-		console.log(units[i], '=>', len + 'px');
-	}
-
-	// super simple tempate
-	function template(subject, substr, newSubStr) {
-		var i = substr.length, str = subject;
-		while (i--) {
-			str = str.replace(substr[i], newSubStr[i]);
-		}
-		return str;
-	}
-	</script>
+    // super simple tempate
+    function template(subject, substr, newSubStr) {
+        var i = substr.length, str = subject;
+        while (i--) {
+            str = str.replace(substr[i], newSubStr[i]);
+        }
+        return str;
+    }
+    </script>
+	
 </body>
 </html>

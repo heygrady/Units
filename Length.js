@@ -80,24 +80,24 @@ function toPx(elem, value, prop, force) {
         // set the style on the target element
         try {
             style[prop] = value;
+
+            // add the test element to the DOM
+            if (styleElem === testElem) { docElement.appendChild(styleElem); }
+
+            // read the computed/used value
+            // if style is nothing the browser didn't accept whatever we set, return 0
+            ret = !style[prop] ? 0 : _parseFloat(curCSS(styleElem, prop));
+
+            // yank the test element out of the dom
+            // (because people will complain if they see in in their inspector, otherwise it doens't hurt anything)
+            if (elem !== testElem && styleElem === testElem) { docElement.removeChild(styleElem); }
+
+            // restore the property we were testing
+            style[prop] = styleVal !== undefined ? styleVal : null;
         } catch(e) {
             // IE 8 and below won't accept nonsense units
-            return 0;
+            ret = 0;
         }
-
-        // add the test element to the DOM
-        if (styleElem === testElem) { docElement.appendChild(styleElem); }
-
-        // read the computed/used value
-        // if style is nothing the browser didn't accept whatever we set, return 0
-        ret = !style[prop] ? 0 : _parseFloat(curCSS(styleElem, prop));
-
-        // yank the test element out of the dom
-        // (because people will complain if they see in in their inspector, otherwise it doens't hurt anything)
-        if (elem !== testElem && styleElem === testElem) { docElement.removeChild(styleElem); }
-
-        // restore the property we were testing
-        style[prop] = styleVal !== undefined ? styleVal : null;
     }
 
     return ret;
