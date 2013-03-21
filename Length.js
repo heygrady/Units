@@ -141,7 +141,7 @@ function curCSS(elem, prop) {
 }
 
 // expose the conversion function to the window object
-window.Length = {
-    toPx: toPx
+window["Length"] = {
+    'toPx': toPx
 };
 }(this, this.document));
