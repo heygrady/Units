@@ -31,7 +31,7 @@ Angle.toTurn('1turn'); //-> 1
 ```
 
 ## Length
-Used for converting between various length units. Absolute units -- such as inches, points and centimeters -- are relative to the Screen DPI which is usually 96. Not all units are supported in every browser, in those cases 0 is returned. In all cases this library uses the browsers own CSS calculations (by setting values with the style property). There's a detailed description of [CSS length units on the MDN](https://developer.mozilla.org/en/CSS/length). The length library is around 1100 characters when minified.
+Used for converting between various length units. Absolute units -- such as inches, points and centimeters -- are relative to the Screen DPI which is usually 96. Not all units are supported in every browser, in those cases 0 is returned. In all cases this library uses the browsers own CSS calculations (by setting values with the style property). There's a detailed description of [CSS length units on the MDN](https://developer.mozilla.org/en/CSS/length). The length library is around 1200 characters when minified.
 
 ```javascript
 // Absolute Units
@@ -46,13 +46,14 @@ Length.toPx(element, '25.4mozmm'); //-> Usually: 0px; Firefox: 95.673418px
 
 // Viewport-relative Units
 // Different based on the browser windows size
-Length.toPx(element, '2vh'); //-> Usually: 0px; IE9: based on viewport height
-Length.toPx(element, '2vw'); //-> Usually: 0px; IE9: based on viewport width
+Length.toPx(element, '2vh'); //-> Firefox 19, Chrome 20, Safari 6, IE9: based on viewport height
+Length.toPx(element, '2vw'); //-> Firefox 19, Chrome 20, Safari 6, IE9: based on viewport width
 Length.toPx(element, '2vm'); //-> Usually: 0px; IE9: based on viewport height/width
+Length.toPx(element, '2vmin'); //-> Firefox 19, Chrome 20, Safari 6, IE9: based on viewport height/width
+Length.toPx(element, '2vmax'); //-> Firefox 19, Chrome 20, IE9: based on viewport height/width
 
 // Font-relative Units
 // Different based on the font on the element (Below is default font of 16px serif font)
-// em, ex, ch require an element for reference.
 Length.toPx(element, '6em'); //-> Usually: 96px
 Length.toPx(element, '13.4ex'); //-> Usually: 96px; Opera: 94px; IE7: 107px; Safari: 112px;
 Length.toPx(element, '12ch'); //-> Usually: 0px; Firefox: 96px; IE9: 83.2px
